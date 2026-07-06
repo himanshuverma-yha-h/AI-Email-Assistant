@@ -1,0 +1,9 @@
+fastmcp==3.4.2
+streamlit
+google-genai==2.10.0
+google-api-python-client==2.198.0
+google-auth==2.55.1
+google-auth-httplib2==0.4.0
+google-auth-oauthlib==1.4.0
+python-dotenv==1.2.2
+pydantic==2.13.4

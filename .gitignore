@@ -1,0 +1,15 @@
+venv/
+.env
+
+token.json
+credentials.json
+
+__pycache__/
+*.pyc
+
+.DS_Store
+
+data/*.db
+data/action_audit_log.json
+
+.streamlit/secrets.toml
