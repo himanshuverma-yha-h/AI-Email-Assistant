@@ -21,6 +21,7 @@ def choose_next_action(
     history,
     conversation_history=None
 ):
+
     if conversation_history is None:
 
         conversation_history = []
@@ -35,13 +36,9 @@ CURRENT USER REQUEST:
 PREVIOUS CONVERSATION:
 
 {json.dumps(
-
     conversation_history,
-
     indent=2,
-
     ensure_ascii=False
-
 )}
 
 AVAILABLE MCP TOOLS:
@@ -50,7 +47,11 @@ AVAILABLE MCP TOOLS:
 
 PREVIOUS ACTION HISTORY:
 
-{json.dumps(history, indent=2, ensure_ascii=False)}
+{json.dumps(
+    history,
+    indent=2,
+    ensure_ascii=False
+)}
 
 Your job is to decide the NEXT action.
 
@@ -97,6 +98,33 @@ RULES:
 16. References such as "it", "that email", "the first one", "the second one", and "that one" may refer to earlier email results.
 17. Never invent a Gmail message ID.
 18. Resolve earlier email references using PREVIOUS CONVERSATION or PREVIOUS ACTION HISTORY.
+
+EMAIL COMPOSITION RULES:
+
+19. When the user asks to send a new email and provides an idea, message, intent, or informal description instead of a complete email body, write a complete polished email body based on the user's intent.
+
+20. Do not simply copy the user's informal wording into the email body.
+
+21. Preserve the meaning and factual information provided by the user. Do not invent achievements, events, promises, deadlines, relationships, or other facts.
+
+22. Improve grammar, sentence structure, clarity, and professionalism.
+
+23. Infer an appropriate tone from the request. Use a natural professional tone by default unless the user requests a casual, formal, friendly, apologetic, or other specific tone.
+
+24. A generated new email body should normally contain an appropriate opening, a clear main message, and a natural closing.
+
+25. End generated new email bodies with:
+
+Best regards,
+Himanshu Verma
+
+unless the user explicitly provides a different signature or asks for no signature.
+
+26. When the user does not provide a subject for a new email, generate a concise and relevant subject based only on the user's intent.
+
+27. When the user provides exact email body text or explicitly asks to send the text exactly as written, preserve that text and do not rewrite it.
+
+28. Before calling send_gmail_email, ensure the body is ready to be shown to the user for confirmation and is suitable to send as an actual email.
 """
 
     response = client.models.generate_content(
@@ -193,7 +221,11 @@ OPERATION CONTEXT:
 
 RESULT:
 
-{json.dumps(tool_result, indent=2, ensure_ascii=False)}
+{json.dumps(
+    tool_result,
+    indent=2,
+    ensure_ascii=False
+)}
 
 Your job is to explain the result to the user clearly.
 

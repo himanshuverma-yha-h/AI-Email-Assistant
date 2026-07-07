@@ -201,10 +201,80 @@ class EmailAssistantAgent:
                     and tool_name not in approved_actions
                 ):
 
+                    confirmation_context = {}
+
+                    gmail_id = arguments.get(
+                        "gmail_id"
+                    )
+
+                    if gmail_id:
+
+                        for history_item in reversed(history):
+
+                            result = history_item.get(
+                                "result"
+                            )
+
+                            if isinstance(result, dict):
+
+                                if (
+                                    result.get("gmail_id")
+                                    == gmail_id
+                                ):
+
+                                    confirmation_context = {
+                                        "sender": result.get(
+                                            "sender",
+                                            "Unknown"
+                                        ),
+                                        "subject": result.get(
+                                            "subject",
+                                            "No Subject"
+                                        ),
+                                        "date": result.get(
+                                            "date",
+                                            "Unknown"
+                                        )
+                                    }
+
+                                    break
+
+                            if isinstance(result, list):
+
+                                for email in result:
+
+                                    if (
+                                        isinstance(email, dict)
+                                        and email.get("gmail_id")
+                                        == gmail_id
+                                    ):
+
+                                        confirmation_context = {
+                                            "sender": email.get(
+                                                "sender",
+                                                "Unknown"
+                                            ),
+                                            "subject": email.get(
+                                                "subject",
+                                                "No Subject"
+                                            ),
+                                            "date": email.get(
+                                                "date",
+                                                "Unknown"
+                                            )
+                                        }
+
+                                        break
+
+                                if confirmation_context:
+
+                                    break
+
                     return {
                         "status": "confirmation_required",
                         "tool_name": tool_name,
                         "arguments": arguments,
+                        "confirmation_context": confirmation_context,
                         "message": (
                             "Confirmation required before "
                             f"executing {tool_name}."

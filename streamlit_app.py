@@ -88,8 +88,14 @@ async def execute_tool(
 
 def show_confirmation_details(
     tool_name,
-    arguments
+    arguments,
+    confirmation_context=None
 ):
+
+    if confirmation_context is None:
+
+        confirmation_context = {}
+
 
     if tool_name == "reply_to_gmail_email":
 
@@ -144,7 +150,22 @@ def show_confirmation_details(
 
         st.write(
             "The assistant wants to archive "
-            "the selected email."
+            "the following email:"
+        )
+
+        st.write(
+            f"**From:** "
+            f"{confirmation_context.get('sender', 'Unknown')}"
+        )
+
+        st.write(
+            f"**Subject:** "
+            f"{confirmation_context.get('subject', 'No Subject')}"
+        )
+
+        st.write(
+            f"**Date:** "
+            f"{confirmation_context.get('date', 'Unknown')}"
         )
 
         return
@@ -154,7 +175,22 @@ def show_confirmation_details(
 
         st.write(
             "The assistant wants to mark "
-            "the selected email as read."
+            "the following email as read:"
+        )
+
+        st.write(
+            f"**From:** "
+            f"{confirmation_context.get('sender', 'Unknown')}"
+        )
+
+        st.write(
+            f"**Subject:** "
+            f"{confirmation_context.get('subject', 'No Subject')}"
+        )
+
+        st.write(
+            f"**Date:** "
+            f"{confirmation_context.get('date', 'Unknown')}"
         )
 
         return
@@ -235,7 +271,11 @@ if user_request:
         st.session_state.pending_action = {
             "user_request": user_request,
             "tool_name": response["tool_name"],
-            "arguments": response["arguments"]
+            "arguments": response["arguments"],
+            "confirmation_context": response.get(
+                "confirmation_context",
+                {}
+            )
         }
 
         st.rerun()
@@ -270,7 +310,11 @@ if st.session_state.pending_action:
 
     show_confirmation_details(
         tool_name=pending["tool_name"],
-        arguments=pending["arguments"]
+        arguments=pending["arguments"],
+        confirmation_context=pending.get(
+            "confirmation_context",
+            {}
+        )
     )
 
 
