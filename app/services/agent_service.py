@@ -1,5 +1,7 @@
 import os
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from google import genai
@@ -26,12 +28,43 @@ def choose_next_action(
 
         conversation_history = []
 
+    india_timezone = ZoneInfo(
+        "Asia/Kolkata"
+    )
+
+    now = datetime.now(
+        india_timezone
+    )
+
+    current_date = now.strftime(
+        "%Y/%m/%d"
+    )
+
+    today_start = now.replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
+
+    today_timestamp = int(
+        today_start.timestamp()
+    )
+
     prompt = f"""
 You are the reasoning engine of an AI Email Assistant.
 
 CURRENT USER REQUEST:
 
 {user_request}
+
+CURRENT DATE:
+
+{current_date}
+
+CURRENT TIMEZONE:
+
+Asia/Kolkata
 
 PREVIOUS CONVERSATION:
 
@@ -125,6 +158,20 @@ unless the user explicitly provides a different signature or asks for no signatu
 27. When the user provides exact email body text or explicitly asks to send the text exactly as written, preserve that text and do not rewrite it.
 
 28. Before calling send_gmail_email, ensure the body is ready to be shown to the user for confirmation and is suitable to send as an actual email.
+
+DATE AND TIME RANGE RULES:
+
+29. When the user asks for emails "today", interpret "today" as the current calendar date in Asia/Kolkata.
+
+30. When the user asks for emails from the last 24 hours, use newer_than:1d.
+
+31. Do not treat "today" and "last 24 hours" as the same time range.
+
+32. Use the exact CURRENT DATE provided in the prompt. Never invent or estimate the current date.
+
+33. When the user asks for a daily email summary or digest, prefer generate_email_digest instead of repeatedly calling search_email, get_email_content, and analyze_email_content for each email.
+
+34. For a request containing "today", select the appropriate email tool. The application will enforce the exact Asia/Kolkata midnight timestamp before tool execution.
 """
 
     response = client.models.generate_content(
@@ -184,6 +231,34 @@ unless the user explicitly provides a different signature or asks for no signatu
 
     action = decision.get("action")
 
+    normalized_request = user_request.lower()
+
+    today_phrases = {
+        "today",
+        "today's",
+        "todays"
+    }
+
+    is_today_request = any(
+        phrase in normalized_request
+        for phrase in today_phrases
+    )
+
+    if (
+        action == "tool"
+        and decision.get("tool_name") in {
+            "generate_email_digest",
+            "search_email"
+        }
+        and is_today_request
+    ):
+
+        decision["arguments"] = {
+            "query": (
+                f"after:{today_timestamp}"
+            )
+        }
+
     if action not in {
         "tool",
         "finish"
@@ -229,21 +304,65 @@ RESULT:
 
 Your job is to explain the result to the user clearly.
 
-RULES:
+GENERAL RULES:
 
 1. Answer the user's original request directly.
-2. Use only information from the result.
-3. Do not invent emails, senders, dates, priorities, or actions.
+2. Use only information from RESULT.
+3. Do not invent emails, senders, dates, priorities, actions, links, or facts.
 4. Do not mention MCP, JSON, APIs, tool calls, or internal implementation.
 5. Do not expose Gmail IDs unless the user specifically asks for them.
-6. Summarize large email lists instead of dumping raw data.
-7. Mention important email subjects and senders when useful.
-8. Keep the answer concise but informative.
-9. If no emails were found, clearly say so.
-10. If a draft email reply was generated, display the COMPLETE drafted reply text.
+6. Mention important email subjects and senders when useful.
+7. Keep the answer concise but informative.
+8. If no emails were found, clearly say so.
+9. Return plain text only.
+
+DRAFT REPLY RULES:
+
+10. If OPERATION CONTEXT is draft_email_reply, display the COMPLETE drafted reply text.
 11. Never summarize or describe a drafted reply instead of showing its actual text.
 12. Clearly label generated reply text as "Draft Reply".
-13. Return plain text only.
+
+EMAIL DIGEST RULES:
+
+13. If OPERATION CONTEXT is generate_email_digest, treat every object in RESULT as one separate email.
+
+14. Never merge multiple email objects into one numbered item, even when they have the same sender, subject, category, or similar content.
+
+15. The total email count must equal the exact number of email objects in RESULT.
+
+16. Display every email from RESULT exactly once.
+
+17. Preserve the priority ordering already provided in RESULT.
+
+18. For every email, show:
+    - Priority
+    - Sender
+    - Subject
+    - Summary
+
+19. You may show the recommended action briefly when useful.
+
+20. Never generate, display, or invent a Draft Reply in an email digest.
+
+21. Never add placeholders such as [Insert Link], [Add Link], or similar text.
+
+22. Do not combine emails into category summaries such as "two emails from the same sender".
+
+23. Number every email individually.
+
+24. If RESULT contains 6 email objects, the final response must contain exactly 6 individually numbered email entries.
+
+25. Do not omit low-priority emails from the digest.
+
+26. Use this structure for each digest email:
+
+1. [Priority] Priority
+From: sender
+Subject: subject
+Summary: summary
+Action: action
+
+27. Do not create information that is absent from RESULT.
 """
 
     try:

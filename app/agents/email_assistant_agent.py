@@ -14,7 +14,7 @@ class EmailAssistantAgent:
 
         self.mcp_client = mcp_client
 
-        self.max_steps = 8
+        self.max_steps = 15
 
         self.action_tools = {
             "mark_as_read",

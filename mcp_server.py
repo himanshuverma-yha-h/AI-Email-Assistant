@@ -9,6 +9,7 @@ from app.services.gmail_service import (
     reply_to_email
 )
 from app.services.ai_service import analyze_email, generate_reply
+from app.services.database_service import DatabaseService
 
 
 mcp = FastMCP(
@@ -93,6 +94,82 @@ def analyze_email_content(
         "priority": analysis.priority,
         "action": analysis.action
     }
+
+@mcp.tool
+def generate_email_digest(query: str) -> list[dict]:
+    """
+    Search Gmail, analyze matching emails, reuse cached analysis,
+    and return emails ordered by priority.
+
+    Example Gmail queries:
+    newer_than:1d
+    newer_than:7d
+    is:unread
+    from:google
+    """
+
+    emails = search_emails(query)
+
+    database = DatabaseService()
+
+    digest = []
+
+    priority_order = {
+        "high": 1,
+        "medium": 2,
+        "low": 3
+    }
+
+    try:
+
+        for email in emails:
+
+            if database.analysis_exists(
+                email.gmail_id
+            ):
+
+                analysis = database.get_analysis(
+                    email.gmail_id
+                )
+
+            else:
+
+                analysis = analyze_email(
+                    sender=email.sender,
+                    subject=email.subject,
+                    body=email.body
+                )
+
+                database.save_analysis(
+                    email=email,
+                    analysis=analysis
+                )
+
+            digest.append(
+                {
+                    "gmail_id": email.gmail_id,
+                    "sender": email.sender,
+                    "subject": email.subject,
+                    "date": email.date,
+                    "summary": analysis.summary,
+                    "category": analysis.category,
+                    "priority": analysis.priority,
+                    "action": analysis.action
+                }
+            )
+
+        digest.sort(
+            key=lambda email: priority_order.get(
+                email["priority"].lower(),
+                4
+            )
+        )
+
+        return digest
+
+    finally:
+
+        database.close()
 
 @mcp.tool
 def draft_email_reply(
@@ -203,6 +280,8 @@ def reply_to_gmail_email(
             "in the existing Gmail thread."
         )
     }
+
+
 
 if __name__ == "__main__":
     mcp.run()
